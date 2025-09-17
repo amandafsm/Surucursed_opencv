@@ -66,6 +66,6 @@ Clone o repositório:\
 bash\
 git clone [URL_DO_REPOSITORIO]\
 cd surucursed_opencv\
-Crie o diretório de build e compile:\
+Crie o diretório de build e compile:
 
 ./compile.sh
