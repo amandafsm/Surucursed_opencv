@@ -47,10 +47,15 @@ sudo apt-get install -y \
 
 Windows (vcpkg)
 bash
-vcpkg install sdl2 sdl2-image opencv4
+vcpkg install sdl2
+sdl2-image 
+opencv4
+
 macOS (Homebrew)
 bash
-brew install sdl2 sdl2-image opencv
+brew install sdl2 
+sdl2-image 
+opencv
 
 ---
 
