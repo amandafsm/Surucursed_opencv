@@ -723,20 +723,21 @@ void process_input()
             switch (event.key.keysym.sym)
             {
                 case SDLK_UP:
-                    if (game_state == GAME_STATE_PLAYING) head_dir = UP;
+                    if (game_state == GAME_STATE_PLAYING && head_dir != DOWN) head_dir = UP;
                     break;
                 case SDLK_DOWN:
-                    if (game_state == GAME_STATE_PLAYING) head_dir = DOWN;
+                    if (game_state == GAME_STATE_PLAYING && head_dir != UP) head_dir = DOWN;
                     break;
                 case SDLK_LEFT:
-                    if (game_state == GAME_STATE_PLAYING) head_dir = LEFT;
+                    if (game_state == GAME_STATE_PLAYING && head_dir != RIGHT) head_dir = LEFT;
                     break;
                 case SDLK_RIGHT:
-                    if (game_state == GAME_STATE_PLAYING) head_dir = RIGHT;
+                    if (game_state == GAME_STATE_PLAYING && head_dir != LEFT) head_dir = RIGHT;
                     break;
                 case SDLK_RETURN:
                     if (game_state == GAME_STATE_MENU) {
                         game_state = GAME_STATE_PLAYING;
+                        system("mplayer iniciando.mp3 &");// tocar som ao iniciar o jogo
                     } else if (game_state == GAME_STATE_GAMEOVER) {
                         setup();
                         system ("mplayer reiniciando.mp3 &");// tocar som ao reiniciar o jogo
@@ -886,13 +887,13 @@ void process_input()
             direction new_dir = last_detected_dir;
 
             // Determinar direção baseada na posição da face
-            if (face_center.y < h / 3) {
+            if (face_center.y < h / 3 && head_dir != DOWN) {
                 new_dir = UP;
-            } else if (face_center.y > 2 * h / 3) {
+            } else if (face_center.y > 2 * h / 3 && head_dir != UP) {
                 new_dir = DOWN;
-            } else if (face_center.x < w / 3) {
+            } else if (face_center.x < w / 3 && head_dir != LEFT) {
                 new_dir = RIGHT;
-            } else if (face_center.x > 2 * w / 3) {
+            } else if (face_center.x > 2 * w / 3 && head_dir != RIGHT) {
                 new_dir = LEFT;
             }
             
@@ -985,12 +986,14 @@ void update() {
         new_headY < 0 || new_headY >= MATRIX_HEIGHT) {
         printf("Game Over: Colisão com parede\n");
         game_state = GAME_STATE_GAMEOVER;
+        system ("mplayer gameover.mp3 &");//tocar som de game over
         return;
     }
 
     // Verifica se comeu fruta
     bool ate_fruit = false;
     if (mapMatrix[new_headX][new_headY].type == FRUIT_TILE) {
+        system("mplayer comendo.mp3 &");//tocar som ao comer fruta
         printf("Fruta comida! Tamanho: %d -> %d\n", snake_size, snake_size + 1);
         snake_size++;
         ate_fruit = true;
