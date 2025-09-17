@@ -34,9 +34,9 @@ OpenCV - Visão computacional e detecção facial
 --- 
 
 ## 📦 Pré-requisitos
-Ubuntu/Debian
-bash
-sudo apt-get update
+Ubuntu/Debian\
+bash\
+sudo apt-get update\
 sudo apt-get install -y \
     g++ \
     cmake \
