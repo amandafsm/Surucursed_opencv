@@ -44,7 +44,6 @@ sudo apt-get install -y \
     libsdl2-image-dev \
     libopencv-dev
 
---- 
 
 Windows (vcpkg)
 bash
@@ -52,6 +51,8 @@ vcpkg install sdl2 sdl2-image opencv4
 macOS (Homebrew)
 bash
 brew install sdl2 sdl2-image opencv
+
+---
 
 ## 🚀 Como Compilar e Executar
 Compilação com CMake
