@@ -45,13 +45,13 @@ sudo apt-get install -y \
     libopencv-dev
 
 
-Windows (vcpkg)
+Windows (vcpkg)\
 bash\
 vcpkg install sdl2\
 sdl2-image \
 opencv4
 
-macOS (Homebrew)
+macOS (Homebrew)\
 bash\
 brew install sdl2 \
 sdl2-image \
