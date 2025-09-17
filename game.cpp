@@ -85,6 +85,7 @@ typedef enum {
   GAME_STATE_GAMEOVER,
 } GameState;
 
+
 static GameState game_state = GAME_STATE_MENU; // Inicia o jogo como tela do Mangabyte
 // Definindo o enum indica o que
 // cada celula do mapa pode assumir
@@ -387,7 +388,6 @@ void load_textures(SDL_Renderer* renderer) {
   SDL_FreeSurface(surface);
 }
 void cleanup_textures() {
-
   if(CabecaBaixo_texture) SDL_DestroyTexture(CabecaBaixo_texture);
   if(CabecaCima_texture) SDL_DestroyTexture(CabecaCima_texture);
   if(CabecaDireita_texture) SDL_DestroyTexture(CabecaDireita_texture);
@@ -410,7 +410,9 @@ void cleanup_textures() {
   if(background_texture) SDL_DestroyTexture(background_texture);
   if(menu_texture) SDL_DestroyTexture(menu_texture);
   if(mangabyte_texture) SDL_DestroyTexture(mangabyte_texture);
+  system ("mplayer fecharjogo.mp3 &");//tocar ao fechar o jogo 
   if(gameover_texture) SDL_DestroyTexture(gameover_texture);
+
 
   IMG_Quit();
 }
@@ -737,6 +739,7 @@ void process_input()
                         game_state = GAME_STATE_PLAYING;
                     } else if (game_state == GAME_STATE_GAMEOVER) {
                         setup();
+                        system ("mplayer reiniciando.mp3 &");// tocar som ao reiniciar o jogo
                         game_state = GAME_STATE_PLAYING;
                     }
                     break;
