@@ -4,6 +4,11 @@ Uma extensão do projeto Surucursed original que adiciona controle por detecçã
  
 --- 
 
+## Diagrama UML
+![Diagrama UML](.png)
+
+---
+
 ## 📋 Sobre o Projeto
 Este projeto expande o jogo Surucursed com funcionalidades de visão computacional, permitindo que os jogadores controlem a cobra tanto pelo teclado tradicional quanto através de movimentos da cabeça detectados pela webcam usando OpenCV.
 
