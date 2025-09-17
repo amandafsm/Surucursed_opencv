@@ -11,3 +11,7 @@ void update();
 void render(SDL_Renderer* renderer);
 void load_textures(SDL_Renderer* renderer);
 void cleanup_textures(void);
+void cleanup_camera();
+void IMG_Quit();
+void cleanup_camera_window();
+void render_camera_frame();

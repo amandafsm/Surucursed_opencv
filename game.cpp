@@ -486,53 +486,284 @@ void setup()
 //
 // Se o seu projeto usa nomes diferentes para a variável de direção, ajuste as linhas
 // marcadas com "ADAPTAR_AQUI" para corresponder ao seu código.
+// process_input com suporte a teclado (SDL) e controle por câmera (OpenCV) - VERSÃO CORRIGIDA
+// Adicione estas variáveis globais no topo do arquivo, junto com as outras
+SDL_Window* camera_window = NULL;
+SDL_Renderer* camera_renderer = NULL;
+SDL_Texture* camera_texture = NULL;
+bool camera_window_open = false;
+int camera_frame_width = 320;
+int camera_frame_height = 240;
+
+cv::CascadeClassifier face_cascade;
+bool face_cascade_loaded = false;
+
+// Função para carregar o classificador de faces
+bool load_face_cascade() {
+    if (face_cascade_loaded) return true;
+    
+    // Tenta carregar o classificador Haar para faces
+    std::string cascade_paths[] = {
+        "/usr/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml",
+        "/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml",
+        "haarcascade_frontalface_alt.xml",
+        "/usr/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml",
+        "/opt/opencv/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml"
+    };
+    
+    for (const auto& path : cascade_paths) {
+        if (face_cascade.load(path)) {
+            printf("Classificador de faces carregado: %s\n", path.c_str());
+            face_cascade_loaded = true;
+            return true;
+        }
+    }
+    
+    printf("ERRO: Não foi possível carregar o classificador de faces!\n");
+    printf("Instale com: sudo apt-get install libopencv-contrib-dev\n");
+    printf("Ou baixe haarcascade_frontalface_alt.xml do repositório OpenCV\n");
+    return false;
+}
+
+// Função para inicializar a janela da câmera
+bool initialize_camera_window() {
+    if (camera_window_open) return true;
+    
+    // Criar janela da câmera
+    camera_window = SDL_CreateWindow(
+        "Snake Game - Camera Feed",
+        SDL_WINDOWPOS_UNDEFINED + WINDOW_WIDTH + 50, // Posiciona ao lado da janela principal
+        SDL_WINDOWPOS_UNDEFINED,
+        camera_frame_width,
+        camera_frame_height,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+    );
+    
+    if (!camera_window) {
+        printf("Erro ao criar janela da câmera: %s\n", SDL_GetError());
+        return false;
+    }
+    
+    // Criar renderer para a janela da câmera
+    camera_renderer = SDL_CreateRenderer(
+        camera_window, 
+        -1, 
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+    );
+    
+    if (!camera_renderer) {
+        printf("Erro ao criar renderer da câmera: %s\n", SDL_GetError());
+        SDL_DestroyWindow(camera_window);
+        camera_window = NULL;
+        return false;
+    }
+    
+    // Criar textura para o frame da câmera (formato BGR para OpenCV)
+    camera_texture = SDL_CreateTexture(
+        camera_renderer,
+        SDL_PIXELFORMAT_BGR24,
+        SDL_TEXTUREACCESS_STREAMING,
+        camera_frame_width,
+        camera_frame_height
+    );
+    
+    if (!camera_texture) {
+        printf("Erro ao criar textura da câmera: %s\n", SDL_GetError());
+        SDL_DestroyRenderer(camera_renderer);
+        SDL_DestroyWindow(camera_window);
+        camera_renderer = NULL;
+        camera_window = NULL;
+        return false;
+    }
+    
+    camera_window_open = true;
+    printf("Janela da câmera criada com sucesso!\n");
+    return true;
+}
+
+// Função para fechar a janela da câmera
+void cleanup_camera_window() {
+    if (camera_texture) {
+        SDL_DestroyTexture(camera_texture);
+        camera_texture = NULL;
+    }
+    if (camera_renderer) {
+        SDL_DestroyRenderer(camera_renderer);
+        camera_renderer = NULL;
+    }
+    if (camera_window) {
+        SDL_DestroyWindow(camera_window);
+        camera_window = NULL;
+    }
+    camera_window_open = false;
+    printf("Janela da câmera fechada.\n");
+}
+
+// Função para renderizar o frame da câmera na janela separada
+void render_camera_frame(const cv::Mat& frame, const cv::Mat& mask) {
+    if (!camera_window_open || !camera_texture || frame.empty()) return;
+    
+    // Redimensiona o frame se necessário
+    cv::Mat display_frame;
+    if (frame.cols != camera_frame_width || frame.rows != camera_frame_height) {
+        cv::resize(frame, display_frame, cv::Size(camera_frame_width, camera_frame_height));
+    } else {
+        display_frame = frame.clone();
+    }
+    flip(display_frame, display_frame, 1);
+    
+    // Detectar faces se o classificador estiver carregado
+    if (face_cascade_loaded) {
+        cv::Mat gray;
+        cv::cvtColor(display_frame, gray, cv::COLOR_BGR2GRAY);
+        cv::equalizeHist(gray, gray);
+        
+        std::vector<cv::Rect> faces;
+        face_cascade.detectMultiScale(gray, faces, 1.1, 3, 0, cv::Size(30, 30));
+        
+        // Desenhar faces detectadas
+        for (const auto& face : faces) {
+            cv::rectangle(display_frame, face, cv::Scalar(0, 255, 0), 3);
+            
+            // Desenhar centro da face
+            cv::Point face_center(face.x + face.width/2, face.y + face.height/2);
+            cv::circle(display_frame, face_center, 5, cv::Scalar(0, 0, 255), -1);
+            
+            // Determinar direção baseada na posição da face
+            int w = display_frame.cols;
+            int h = display_frame.rows;
+            
+            std::string direction_text;
+            if (face_center.y < h / 3) {
+                direction_text = "UP";
+            } else if (face_center.y > 2 * h / 3) {
+                direction_text = "DOWN";
+            } else if (face_center.x < w / 3) {
+                direction_text = "LEFT";
+            } else if (face_center.x > 2 * w / 3) {
+                direction_text = "RIGHT";
+            } else {
+                direction_text = "CENTER";
+            }
+            
+            // Texto indicando direção detectada
+            cv::putText(display_frame, direction_text, 
+                       cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, 
+                       cv::Scalar(0, 255, 255), 2);
+            
+            // Mostrar área da face
+            cv::putText(display_frame, "Face: " + std::to_string((int)(face.width * face.height)), 
+                       cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                       cv::Scalar(255, 255, 255), 1);
+        }
+        
+        // Desenhar zonas de controle
+        int w = display_frame.cols;
+        int h = display_frame.rows;
+        
+        // Linhas divisórias das zonas (mais visíveis)
+        cv::line(display_frame, cv::Point(0, h/3), cv::Point(w, h/3), cv::Scalar(255, 255, 0), 2);
+        cv::line(display_frame, cv::Point(0, 2*h/3), cv::Point(w, 2*h/3), cv::Scalar(255, 255, 0), 2);
+        cv::line(display_frame, cv::Point(w/3, 0), cv::Point(w/3, h), cv::Scalar(255, 255, 0), 2);
+        cv::line(display_frame, cv::Point(2*w/3, 0), cv::Point(2*w/3, h), cv::Scalar(255, 255, 0), 2);
+        
+        // Labels das zonas
+        cv::putText(display_frame, "UP", cv::Point(w/2-15, 25), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
+        cv::putText(display_frame, "DOWN", cv::Point(w/2-25, h-10), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
+        cv::putText(display_frame, "LEFT", cv::Point(5, h/2), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
+        cv::putText(display_frame, "RIGHT", cv::Point(w-60, h/2), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
+    }
+    
+    // Adicionar texto de instruções
+    cv::putText(display_frame, "Controle com o rosto", 
+               cv::Point(10, camera_frame_height - 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+               cv::Scalar(255, 255, 255), 1);
+    cv::putText(display_frame, "Pressione 'V' para fechar", 
+               cv::Point(10, camera_frame_height - 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+               cv::Scalar(255, 255, 255), 1);
+    
+    // Atualizar textura SDL
+    void* pixels;
+    int pitch;
+    SDL_LockTexture(camera_texture, NULL, &pixels, &pitch);
+    memcpy(pixels, display_frame.data, display_frame.total() * display_frame.elemSize());
+    SDL_UnlockTexture(camera_texture);
+    
+    // Renderizar na janela da câmera
+    SDL_SetRenderDrawColor(camera_renderer, 0, 0, 0, 255);
+    SDL_RenderClear(camera_renderer);
+    SDL_RenderCopy(camera_renderer, camera_texture, NULL, NULL);
+    SDL_RenderPresent(camera_renderer);
+}
+
+// Função process_input modificada com suporte à janela da câmera
+// Função process_input modificada com detecção facial
 void process_input()
 {
     SDL_Event event;
-    // ===== Entrada via teclado (mantida) =====
+    
+    // ===== Entrada via teclado =====
     while (SDL_PollEvent(&event))
     {
         if (event.type == SDL_QUIT)
         {
-            game_is_running = FALSE;
+            // Verifica qual janela foi fechada
+            if (camera_window && event.window.windowID == SDL_GetWindowID(camera_window)) {
+                cleanup_camera_window();
+            } else {
+                game_is_running = FALSE;
+            }
             return;
         }
+        
         if (event.type == SDL_KEYDOWN)
         {
             switch (event.key.keysym.sym)
             {
                 case SDLK_UP:
-                    // ADAPTAR_AQUI: atribua a direção 'UP' conforme seu código
-                    #ifdef SNAKE_DIR_UP
-                    snake_dir = SNAKE_DIR_UP;
-                    #else
-                    head_dir = UP; // Corrigido para usar a variável correta
-                    #endif
+                    if (game_state == GAME_STATE_PLAYING) head_dir = UP;
                     break;
                 case SDLK_DOWN:
-                    #ifdef SNAKE_DIR_DOWN
-                    snake_dir = SNAKE_DIR_DOWN;
-                    #else
-                    head_dir = DOWN;
-                    #endif
-                   break;
+                    if (game_state == GAME_STATE_PLAYING) head_dir = DOWN;
+                    break;
                 case SDLK_LEFT:
-                    #ifdef SNAKE_DIR_LEFT
-                    snake_dir = SNAKE_DIR_LEFT;
-                    #else
-                    head_dir = LEFT;
-                    #endif
+                    if (game_state == GAME_STATE_PLAYING) head_dir = LEFT;
                     break;
                 case SDLK_RIGHT:
-                    #ifdef SNAKE_DIR_RIGHT
-                    snake_dir = SNAKE_DIR_RIGHT;
-                    #else
-                    head_dir = RIGHT;
-                    #endif
+                    if (game_state == GAME_STATE_PLAYING) head_dir = RIGHT;
                     break;
                 case SDLK_RETURN:
                     if (game_state == GAME_STATE_MENU) {
                         game_state = GAME_STATE_PLAYING;
+                    } else if (game_state == GAME_STATE_GAMEOVER) {
+                        setup();
+                        game_state = GAME_STATE_PLAYING;
+                    }
+                    break;
+                case SDLK_v:
+                    // Tecla 'V' para abrir/fechar janela da câmera
+                    if (camera_window_open) {
+                        cleanup_camera_window();
+                    } else {
+                        if (initialize_camera_window()) {
+                            load_face_cascade(); // Carrega o classificador ao abrir a janela
+                        }
+                    }
+                    break;
+                case SDLK_c:
+                    // Tecla 'C' para reconectar câmera
+                    if (g_cv_initialized) {
+                        g_cap.release();
+                        g_cv_initialized = false;
+                        printf("Câmera reiniciada. Tentando reconectar...\n");
+                    }
+                    break;
+                case SDLK_r:
+                    // Tecla 'R' para reiniciar jogo manualmente
+                    if (game_state == GAME_STATE_PLAYING || game_state == GAME_STATE_GAMEOVER) {
+                        setup();
+                        game_state = GAME_STATE_PLAYING;
+                        printf("Jogo reiniciado manualmente\n");
                     }
                     break;
                 case SDLK_ESCAPE:
@@ -544,106 +775,194 @@ void process_input()
         }
     }
 
-    // ===== Entrada via câmera (OpenCV) =====
-    // Inicializa a câmera na primeira chamada
+    // ===== Entrada via câmera com detecção facial =====
     if (!g_cv_initialized)
     {
-        g_cap.open(0);
-        if (!g_cap.isOpened())
-        {
-            // Não consegui abrir; apenas ignora controles por câmera
-            g_cv_initialized = true; // mark as initialized to avoid tentar sempre
+        printf("Tentando inicializar a câmera...\n");
+        
+        // Desabilita backends problemáticos
+        setenv("OPENCV_VIDEOIO_PRIORITY_GSTREAMER", "0", 1);
+        
+        int backends[] = {
+            cv::CAP_V4L2,
+            cv::CAP_FFMPEG,
+            cv::CAP_ANY
+        };
+        
+        bool camera_opened = false;
+        for (int i = 0; i < 3; i++) {
+            printf("Tentando backend %d...\n", backends[i]);
+            g_cap.open(0, backends[i]);
+            
+            if (g_cap.isOpened()) {
+                printf("Câmera aberta com sucesso usando backend %d!\n", backends[i]);
+                camera_opened = true;
+                break;
+            } else {
+                printf("Falhou com backend %d\n", backends[i]);
+            }
+        }
+        
+        if (!camera_opened) {
+            printf("ERRO: Não foi possível abrir a câmera.\n");
+            printf("Pressione 'V' para abrir a janela da câmera (quando disponível)\n");
+            g_cv_initialized = true;
             return;
         }
-        // reduzir resolução para processamento mais rápido (opcional)
-        g_cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
-        g_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
+        
+        // Configurações da câmera
+        g_cap.set(cv::CAP_PROP_FRAME_WIDTH, camera_frame_width);
+        g_cap.set(cv::CAP_PROP_FRAME_HEIGHT, camera_frame_height);
+        g_cap.set(cv::CAP_PROP_FPS, 30);
+        g_cap.set(cv::CAP_PROP_BUFFERSIZE, 1); // Reduz buffer para menos latência
+        
+        // Atualiza o tamanho real obtido da câmera
+        camera_frame_width = (int)g_cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        camera_frame_height = (int)g_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+        
+        printf("Câmera configurada! Resolução: %dx%d\n", camera_frame_width, camera_frame_height);
+        printf("Pressione 'V' para abrir/fechar a janela da câmera\n");
+        
         g_cv_initialized = true;
+        
+        // Abre janela automaticamente e carrega classificador
+        if (initialize_camera_window()) {
+            load_face_cascade();
+        }
     }
 
     if (!g_cap.isOpened()) return;
 
-    cv::Mat frame, hsv, mask;
-    g_cap >> frame;
-    if (frame.empty()) return;
-
-    // Converter para HSV
-    cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
-
-    // Detectar cor vermelha (duas faixas em HSV)
-    cv::Scalar lower_red1(0, 120, 70), upper_red1(10, 255, 255);
-    cv::Scalar lower_red2(170, 120, 70), upper_red2(180, 255, 255);
-
-    cv::Mat mask1, mask2;
-    cv::inRange(hsv, lower_red1, upper_red1, mask1);
-    cv::inRange(hsv, lower_red2, upper_red2, mask2);
-    mask = mask1 | mask2;
-
-    // Remover ruídos com operação morfológica
-    cv::erode(mask, mask, cv::Mat(), cv::Point(-1,-1), 2);
-    cv::dilate(mask, mask, cv::Mat(), cv::Point(-1,-1), 2);
-
-    // Encontrar contornos grandes
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-    if (!contours.empty())
-    {
-        auto maxContour = *std::max_element(contours.begin(), contours.end(),
-                                            [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b)
-                                            { return cv::contourArea(a) < cv::contourArea(b); });
-        double area = cv::contourArea(maxContour);
-        if (area < 200.0) return; // filtro para evitar deteção de ruído
-
-        cv::Rect bbox = cv::boundingRect(maxContour);
-        cv::Point center = (bbox.br() + bbox.tl()) * 0.5;
-
-        int w = frame.cols;
-        int h = frame.rows;
-
-        // Mapear posição do objeto para direções (terços da imagem)
-        if (center.y < h / 3)
-        {
-            head_dir = UP;
+    cv::Mat frame;
+    
+    // Captura frame com retry
+    bool frame_captured = false;
+    for (int attempts = 0; attempts < 3; attempts++) {
+        g_cap >> frame;
+        if (!frame.empty()) {
+            frame_captured = true;
+            break;
         }
-        else if (center.y > 2 * h / 3)
-        {
-            head_dir = DOWN;
-        }
-        else if (center.x < w / 3)
-        {
-            head_dir = LEFT;
-        }
-        else if (center.x > 2 * w / 3)
-        {
-            head_dir = RIGHT;
+        SDL_Delay(5);
+    }
+    
+    if (!frame_captured) {
+        return;
+    }
+
+    // Renderizar frame da câmera (sem máscara pois não usamos mais detecção de cor)
+    cv::Mat empty_mask;
+    render_camera_frame(frame, empty_mask);
+
+    // Detectar faces para controlar a cobra (apenas durante o jogo)
+    if (game_state == GAME_STATE_PLAYING && face_cascade_loaded) {
+        cv::Mat gray;
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+        cv::equalizeHist(gray, gray);
+        
+        std::vector<cv::Rect> faces;
+        face_cascade.detectMultiScale(gray, faces, 1.1, 3, 0, cv::Size(30, 30));
+
+        if (!faces.empty()) {
+            // Usar a maior face detectada
+            cv::Rect largest_face = *std::max_element(faces.begin(), faces.end(),
+                [](const cv::Rect& a, const cv::Rect& b) {
+                    return (a.width * a.height) < (b.width * b.height);
+                });
+
+            cv::Point face_center(largest_face.x + largest_face.width/2, 
+                                 largest_face.y + largest_face.height/2);
+
+            int w = frame.cols;
+            int h = frame.rows;
+
+            static direction last_detected_dir = UP;
+            static Uint32 last_direction_change = 0;
+            Uint32 current_time = SDL_GetTicks();
+            
+            direction new_dir = last_detected_dir;
+
+            // Determinar direção baseada na posição da face
+            if (face_center.y < h / 3) {
+                new_dir = UP;
+            } else if (face_center.y > 2 * h / 3) {
+                new_dir = DOWN;
+            } else if (face_center.x < w / 3) {
+                new_dir = RIGHT;
+            } else if (face_center.x > 2 * w / 3) {
+                new_dir = LEFT;
+            }
+            
+            // Só muda direção se passou tempo suficiente (debounce)
+            if (new_dir != last_detected_dir && current_time - last_direction_change > 500) {
+                // Evita reversão direta (cobra não pode ir na direção oposta)
+                bool valid_direction = true;
+                switch (head_dir) {
+                    case UP: if (new_dir == DOWN) valid_direction = false; break;
+                    case DOWN: if (new_dir == UP) valid_direction = false; break;
+                    case LEFT: if (new_dir == RIGHT) valid_direction = false; break;
+                    case RIGHT: if (new_dir == LEFT) valid_direction = false; break;
+                }
+                
+                if (valid_direction) {
+                    head_dir = new_dir;
+                    last_detected_dir = new_dir;
+                    last_direction_change = current_time;
+                    printf("Direção da face: %d\n", new_dir);
+                }
+            }
         }
     }
 }
 
+// Função de limpeza atualizada
+void cleanup_camera() {
+    cleanup_camera_window();
+    if (g_cap.isOpened()) {
+        printf("Fechando câmera...\n");
+        g_cap.release();
+    }
+    cv::destroyAllWindows();
+}
 
-void update()
-{
-
-  if (game_state != GAME_STATE_PLAYING && game_state != GAME_STATE_SPLASH) return; // Não atualiza se a tela do jogo não estiver rodando
-  if (game_state==GAME_STATE_SPLASH){ // Timer simples da Splash Screen para mudar para o menu
-    if (slashcount >= 500){
-      game_state = GAME_STATE_MENU;
-      return;
-    } slashcount++;
-  }
+// Função update corrigida para evitar game overs espontâneos
+void update() {
+    // Só atualiza durante o jogo ou splash screen
+    if (game_state != GAME_STATE_PLAYING && game_state != GAME_STATE_SPLASH) return;
+    
+    // Timer da splash screen
+    if (game_state == GAME_STATE_SPLASH) {
+        if (slashcount >= 500) {
+            game_state = GAME_STATE_MENU;
+            return;
+        }
+        slashcount++;
+        return;
+    }
+    
     // Verifica se já passou o tempo necessário para a próxima atualização
     Uint32 current_time = SDL_GetTicks();
     if (current_time - last_update_time < update_interval) {
         return;
     }
     last_update_time = current_time;
-    // Move a cobra baseada na sua direção
+    
+    // Validação de integridade antes de mover
+    if (snake_headX < 0 || snake_headX >= MATRIX_WIDTH || 
+        snake_headY < 0 || snake_headY >= MATRIX_HEIGHT ||
+        snake_tailX < 0 || snake_tailX >= MATRIX_WIDTH ||
+        snake_tailY < 0 || snake_tailY >= MATRIX_HEIGHT) {
+        printf("ERRO: Posição da cobra inválida! Head: (%d,%d) Tail: (%d,%d)\n", 
+               snake_headX, snake_headY, snake_tailX, snake_tailY);
+        setup(); // Reinicia o jogo
+        return;
+    }
+    
+    // Calcula nova posição da cabeça
     int new_headX = snake_headX;
     int new_headY = snake_headY;
 
-    switch (head_dir)
-    {
+    switch (head_dir) {
         case UP:
             new_headY++;
             break;
@@ -658,33 +977,48 @@ void update()
             break;
     }
 
-    // Caso a cobra bata na parede
-    if (new_headX < 0 || new_headX >= MATRIX_WIDTH || new_headY < 0 || new_headY >= MATRIX_HEIGHT) {
-      game_state=GAME_STATE_GAMEOVER;
-      return;
+    // Verifica colisão com parede
+    if (new_headX < 0 || new_headX >= MATRIX_WIDTH || 
+        new_headY < 0 || new_headY >= MATRIX_HEIGHT) {
+        printf("Game Over: Colisão com parede\n");
+        game_state = GAME_STATE_GAMEOVER;
+        return;
     }
 
-    // Caso a nova posição da cabeça seja uma fruta
+    // Verifica se comeu fruta
+    bool ate_fruit = false;
     if (mapMatrix[new_headX][new_headY].type == FRUIT_TILE) {
-      // Aumenta o tamanho da cobra
-      snake_size++;
+        printf("Fruta comida! Tamanho: %d -> %d\n", snake_size, snake_size + 1);
+        snake_size++;
+        ate_fruit = true;
 
-      // Remove a fruta comida
-      mapMatrix[new_headX][new_headY].type = EMPTY_TILE;
+        // Remove a fruta comida
+        mapMatrix[new_headX][new_headY].type = EMPTY_TILE;
 
-      // Gera uma nova fruta em posição aleatória
-      int fruitX, fruitY;
-      do {
-          fruitX = rand() % MATRIX_WIDTH;
-          fruitY = rand() % MATRIX_HEIGHT;
-      } while (mapMatrix[fruitX][fruitY].type != EMPTY_TILE);
+        // Gera nova fruta
+        int fruitX, fruitY;
+        int attempts = 0;
+        do {
+            fruitX = rand() % MATRIX_WIDTH;
+            fruitY = rand() % MATRIX_HEIGHT;
+            attempts++;
+        } while (mapMatrix[fruitX][fruitY].type != EMPTY_TILE && attempts < 100);
+        
+        if (attempts < 100) {
+            mapMatrix[fruitX][fruitY].fruit = (fruitTile){FRUIT_TILE, (char)(rand() % 4)};
+        }
+    }
 
-      mapMatrix[fruitX][fruitY].fruit = (fruitTile){FRUIT_TILE, (char)(rand() % 7)};
-
-  } else {
-        // Move a cobra deslocando o corpo
-
-        // Encontra a próxima posição da cauda
+    // Se não comeu fruta, move a cauda
+    if (!ate_fruit) {
+        // Validação da cauda
+        if (mapMatrix[snake_tailX][snake_tailY].type != SNAKE_TILE) {
+            printf("ERRO: Cauda não encontrada em (%d,%d)!\n", snake_tailX, snake_tailY);
+            setup();
+            return;
+        }
+        
+        // Encontra próxima posição da cauda
         int next_tailX = snake_tailX;
         int next_tailY = snake_tailY;
 
@@ -703,27 +1037,28 @@ void update()
                 break;
         }
 
-        // Limpa a posição da cauda
+        // Limpa posição antiga da cauda
         mapMatrix[snake_tailX][snake_tailY].type = EMPTY_TILE;
 
-        // Atualiza a posição da cauda
+        // Atualiza posição da cauda
         snake_tailX = next_tailX;
         snake_tailY = next_tailY;
-
-        // Caso a nova posição da cabeça seja o corpo da cobra (checagem feita depois para garantir que a colisão não aconteça antes da posição da cauda atualizar)
-        if (mapMatrix[new_headX][new_headY].type == SNAKE_TILE) {
-          game_state=GAME_STATE_GAMEOVER;
-          return;
-        }
-
     }
 
-    // Atualiza a posição da cabeça
+    // Verifica colisão com próprio corpo (após mover a cauda)
+    if (mapMatrix[new_headX][new_headY].type == SNAKE_TILE) {
+        printf("Game Over: Colisão com próprio corpo\n");
+        game_state = GAME_STATE_GAMEOVER;
+        return;
+    }
+
+    // Atualiza posição da cabeça
     mapMatrix[snake_headX][snake_headY].snake.forwardDirection = head_dir;
-    mapMatrix[new_headX][new_headY].snake = (snakeTile){SNAKE_TILE, mapMatrix[snake_headX][snake_headY].snake.forwardDirection};
+    mapMatrix[new_headX][new_headY].snake = (snakeTile){SNAKE_TILE, head_dir};
     snake_headX = new_headX;
     snake_headY = new_headY;
 }
+
 void render(SDL_Renderer* renderer) {
   // Limpa toda a tela com preto
   SDL_SetRenderDrawColor(renderer, BLACK);
