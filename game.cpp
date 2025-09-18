@@ -360,7 +360,7 @@ void load_textures(SDL_Renderer* renderer) {
   background_texture = SDL_CreateTextureFromSurface(renderer, surface);
   SDL_FreeSurface(surface);
 
-  // Carrega a textura do Menu
+  // Carrega a textura do Menu (TROCAR AQUI PARA MODIFICAR A TELA INICIAL)
   surface = IMG_Load("assets/menu.png");
   if (!surface) {
       fprintf(stderr, "Erro ao carregar menu.png: %s\n", IMG_GetError());
