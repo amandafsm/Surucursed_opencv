@@ -3,6 +3,7 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -39,6 +40,10 @@ int slashcount = 0;
 #define MANGENTA 255,0,255,255
 #define BLACK 0,0,0,255
 
+//Variavel da pontuação
+int score = 0;
+#define HIGHSCORE_FILE "highscore.txt"
+
 // Variáveis para o viewport ajustado
 static SDL_Rect game_viewport = {0};
 static int cell_size = 0;  // Tamanho real das células (quadradas)
@@ -72,6 +77,8 @@ SDL_Texture* background_texture = NULL;
 SDL_Texture* menu_texture = NULL;
 SDL_Texture* mangabyte_texture = NULL;
 SDL_Texture* gameover_texture = NULL;
+TTF_Font* game_font = NULL;
+
 
 
 // Definido na main, quando 0 ou FALSE o jogo para após executar a renderização
@@ -412,7 +419,11 @@ void cleanup_textures() {
   if(mangabyte_texture) SDL_DestroyTexture(mangabyte_texture);
   system ("mplayer fecharjogo.mp3 &");//tocar ao fechar o jogo 
   if(gameover_texture) SDL_DestroyTexture(gameover_texture);
-
+  if (game_font) {
+    TTF_CloseFont(game_font);
+    game_font = NULL;
+}
+TTF_Quit();
 
   IMG_Quit();
 }
@@ -479,8 +490,20 @@ void setup()
 
     mapMatrix[fruitX][fruitY].fruit = (fruitTile){FRUIT_TILE, (char)(rand() % 7)};
   }
+  if (TTF_Init() == -1) {
+    fprintf(stderr, "Não foi possível inicializar SDL_ttf: %s\n", TTF_GetError());
+    game_is_running = FALSE;
+    return;
+}
+game_font = TTF_OpenFont("assets/arial.ttf", 24); // Arial tamanho 24
+if (!game_font) {
+    fprintf(stderr, "Não foi possível carregar fonte: %s\n", TTF_GetError());
+    game_is_running = FALSE;
+    return;
 }
 
+  load_high_score();
+}
 
 // process_input com suporte a teclado (SDL) e controle por câmera (OpenCV)
 // Assume que exista uma função/variável para ajustar a direção da cobra.
@@ -930,7 +953,7 @@ void cleanup_camera() {
 }
 
 // Função update corrigida para evitar game overs espontâneos
-void update() {
+void update(SDL_Renderer* renderer) {
     // Só atualiza durante o jogo ou splash screen
     if (game_state != GAME_STATE_PLAYING && game_state != GAME_STATE_SPLASH) return;
     
@@ -950,7 +973,8 @@ void update() {
         return;
     }
     last_update_time = current_time;
-    
+    // Exibir pontuação atual
+
     // Validação de integridade antes de mover
     if (snake_headX < 0 || snake_headX >= MATRIX_WIDTH || 
         snake_headY < 0 || snake_headY >= MATRIX_HEIGHT ||
@@ -984,6 +1008,7 @@ void update() {
     // Verifica colisão com parede
     if (new_headX < 0 || new_headX >= MATRIX_WIDTH || 
         new_headY < 0 || new_headY >= MATRIX_HEIGHT) {
+        record_score(score);
         printf("Game Over: Colisão com parede\n");
         game_state = GAME_STATE_GAMEOVER;
         system ("mplayer gameover.mp3 &");//tocar som de game over
@@ -995,7 +1020,10 @@ void update() {
     if (mapMatrix[new_headX][new_headY].type == FRUIT_TILE) {
         system("mplayer comendo.mp3 &");//tocar som ao comer fruta
         printf("Fruta comida! Tamanho: %d -> %d\n", snake_size, snake_size + 1);
+        printf("Pontuação: %d\n", snake_size - 2);
+        printrecord();
         snake_size++;
+        score++;
         ate_fruit = true;
 
         // Remove a fruta comida
@@ -1239,10 +1267,76 @@ for(int i = 0; i < snake_size; i++) {
           }
       }
   }
+        char score_text[50];
+        sprintf(score_text, "Score %d", score);
+        SDL_Color white = {0, 0, 0, 255};
+        render_text(renderer, score_text, 10, 10, white);
+
+        // Exibir record
+        int highscore = load_high_score(); // Função que você já tem
+        char highscore_text[50];
+        sprintf(highscore_text, "Record %d", highscore);
+        render_text(renderer, highscore_text, 10, 40, white);
+
 }
+
   // Restaura o viewport padrão para a janela toda
   SDL_RenderSetViewport(renderer, NULL);
   SDL_RenderPresent(renderer);
 }
 
 
+//Funções para pontuação
+
+void save_score(int score) {
+    FILE* file = fopen("highscore.txt", "w");
+    if (file) {
+        fprintf(file, "%d\n", score);
+        fclose(file);
+    } else {
+        fprintf(stderr, "Erro ao salvar pontuação!\n");
+    }
+}
+int load_high_score() {
+    FILE* file = fopen("highscore.txt", "r");
+    int high_score = 0;
+    if (file) {
+        fscanf(file, "%d", &high_score);
+        fclose(file);
+    }
+    return high_score;
+}
+void record_score(int score) {
+    int high_score = load_high_score();
+    if (score > high_score) {
+        save_score(score);
+        printf("Novo recorde! Pontuação: %d\n", score);
+    } else {
+        printf("Pontuação final: %d. Recorde atual: %d\n", score, high_score);
+    }
+}
+void printrecord(){
+    printf("Record atual: %d\n", load_high_score());
+}
+void render_text(SDL_Renderer* renderer, const char* text, int x, int y, SDL_Color color) {
+    if (!game_font) return;
+
+    SDL_Surface* surface = TTF_RenderText_Blended(game_font, text, color);
+    if (!surface) {
+        fprintf(stderr, "Erro ao criar surface do texto: %s\n", TTF_GetError());
+        return;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        fprintf(stderr, "Erro ao criar textura do texto: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return;
+    }
+
+    SDL_Rect dst_rect = {x, y, surface->w, surface->h};
+    SDL_RenderCopy(renderer, texture, NULL, &dst_rect);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}

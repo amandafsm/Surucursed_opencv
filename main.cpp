@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     while (game_is_running)
     {
         process_input();   // Lê teclado e câmera (OpenCV)
-        update();          // Atualiza lógica do jogo (movimento, colisão, etc)
+        update(renderer);  // Atualiza lógica do jogo (movimento, colisão, etc)
         render(renderer);  // Desenha tudo na tela
     }
 
@@ -33,6 +33,7 @@ int main(int argc, char** argv)
 
     // Destroi a janela e encerra SDL
     destroy_window();
+    printrecord();
 
     return 0;
 }
