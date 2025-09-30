@@ -34,7 +34,7 @@ SDL2 - Biblioteca multimídia
 
 SDL_image - Carregamento de imagens
 
-SLD_tff - Carregamento de textos
+SLD_ttf - Carregamento de textos
 
 OpenCV - Visão computacional e detecção facial
 
