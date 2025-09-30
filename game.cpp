@@ -495,7 +495,7 @@ void setup()
     game_is_running = FALSE;
     return;
 }
-game_font = TTF_OpenFont("assets/arial.ttf", 24); // Arial tamanho 24
+game_font = TTF_OpenFont("assets/arial.ttf", 12); // Arial tamanho 12
 if (!game_font) {
     fprintf(stderr, "Não foi possível carregar fonte: %s\n", TTF_GetError());
     game_is_running = FALSE;
@@ -1009,6 +1009,7 @@ void update(SDL_Renderer* renderer) {
     if (new_headX < 0 || new_headX >= MATRIX_WIDTH || 
         new_headY < 0 || new_headY >= MATRIX_HEIGHT) {
         record_score(score);
+        score = 0;
         printf("Game Over: Colisão com parede\n");
         game_state = GAME_STATE_GAMEOVER;
         system ("mplayer gameover.mp3 &");//tocar som de game over
@@ -1269,14 +1270,14 @@ for(int i = 0; i < snake_size; i++) {
   }
         char score_text[50];
         sprintf(score_text, "Score %d", score);
-        SDL_Color white = {0, 0, 0, 255};
-        render_text(renderer, score_text, 10, 10, white);
+        SDL_Color black = {0, 0, 0, 255};
+        render_text(renderer, score_text, 10, 10, black);
 
         // Exibir record
         int highscore = load_high_score(); // Função que você já tem
         char highscore_text[50];
         sprintf(highscore_text, "Record %d", highscore);
-        render_text(renderer, highscore_text, 10, 40, white);
+        render_text(renderer, highscore_text, 10, 40, black);
 
 }
 
