@@ -1,0 +1,3 @@
+/home/amandafsm/Surucursed_opencv/build/CMakeFiles/surucursed.dir
+/home/amandafsm/Surucursed_opencv/build/CMakeFiles/edit_cache.dir
+/home/amandafsm/Surucursed_opencv/build/CMakeFiles/rebuild_cache.dir

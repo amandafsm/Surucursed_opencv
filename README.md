@@ -34,6 +34,8 @@ SDL2 - Biblioteca multimídia
 
 SDL_image - Carregamento de imagens
 
+SLD_ttf - Carregamento de textos
+
 OpenCV - Visão computacional e detecção facial
 
 --- 
@@ -66,7 +68,7 @@ opencv
 
 ## 🚀 Como Compilar e Executar
 Compilação com CMake\
-Clone o repositório:\
+Clone o repositório:
 
 bash\
 git clone [URL_DO_REPOSITORIO]\

@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/home/amandafsm/Surucursed_opencv/build",
+  "command": "/usr/bin/g++  -I/usr/include/SDL2 -I/usr/include/libpng16 -I/usr/include/webp -isystem /usr/include/opencv4 -g -std=gnu++17 -o CMakeFiles/surucursed.dir/main.cpp.o -c /home/amandafsm/Surucursed_opencv/main.cpp",
+  "file": "/home/amandafsm/Surucursed_opencv/main.cpp",
+  "output": "CMakeFiles/surucursed.dir/main.cpp.o"
+},
+{
+  "directory": "/home/amandafsm/Surucursed_opencv/build",
+  "command": "/usr/bin/g++  -I/usr/include/SDL2 -I/usr/include/libpng16 -I/usr/include/webp -isystem /usr/include/opencv4 -g -std=gnu++17 -o CMakeFiles/surucursed.dir/game.cpp.o -c /home/amandafsm/Surucursed_opencv/game.cpp",
+  "file": "/home/amandafsm/Surucursed_opencv/game.cpp",
+  "output": "CMakeFiles/surucursed.dir/game.cpp.o"
+},
+{
+  "directory": "/home/amandafsm/Surucursed_opencv/build",
+  "command": "/usr/bin/g++  -I/usr/include/SDL2 -I/usr/include/libpng16 -I/usr/include/webp -isystem /usr/include/opencv4 -g -std=gnu++17 -o CMakeFiles/surucursed.dir/windowManager.cpp.o -c /home/amandafsm/Surucursed_opencv/windowManager.cpp",
+  "file": "/home/amandafsm/Surucursed_opencv/windowManager.cpp",
+  "output": "CMakeFiles/surucursed.dir/windowManager.cpp.o"
+}
+]
