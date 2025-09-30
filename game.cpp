@@ -973,7 +973,6 @@ void update(SDL_Renderer* renderer) {
         return;
     }
     last_update_time = current_time;
-    // Exibir pontuação atual
 
     // Validação de integridade antes de mover
     if (snake_headX < 0 || snake_headX >= MATRIX_WIDTH || 
@@ -1083,6 +1082,8 @@ void update(SDL_Renderer* renderer) {
     // Verifica colisão com próprio corpo (após mover a cauda)
     if (mapMatrix[new_headX][new_headY].type == SNAKE_TILE) {
         printf("Game Over: Colisão com próprio corpo\n");
+        record_score(score);
+        score = 0;
         game_state = GAME_STATE_GAMEOVER;
         return;
     }
