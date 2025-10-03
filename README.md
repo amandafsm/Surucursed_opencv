@@ -30,6 +30,8 @@ Alternância de Modos: Troque entre teclado e controle facial durante o jogo
 ## 🛠️ Tecnologias Utilizadas
 C++17
 
+mPlayer - Biblioteca para áudios
+
 SDL2 - Biblioteca multimídia
 
 SDL_image - Carregamento de imagens
@@ -47,8 +49,10 @@ sudo apt-get update\
 sudo apt-get install -y \
     g++ \
     cmake \
+    mplayer\
     libsdl2-dev \
     libsdl2-image-dev \
+    libsdl2-ttf-dev\
     libopencv-dev
 
 
@@ -56,6 +60,7 @@ Windows (vcpkg)\
 bash\
 vcpkg install sdl2\
 sdl2-image \
+sdl2-ttf
 opencv4
 
 macOS (Homebrew)\
