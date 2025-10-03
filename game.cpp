@@ -6,9 +6,8 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-// --- OpenCV integration (added) ---
 #include <opencv2/opencv.hpp>
+
 // Use uma flag para garantir inicialização única da câmera
 static cv::VideoCapture g_cap;
 static bool g_cv_initialized = false;
@@ -79,8 +78,6 @@ SDL_Texture* mangabyte_texture = NULL;
 SDL_Texture* gameover_texture = NULL;
 TTF_Font* game_font = NULL;
 
-
-
 // Definido na main, quando 0 ou FALSE o jogo para após executar a renderização
 extern int game_is_running;
 
@@ -92,8 +89,7 @@ typedef enum {
   GAME_STATE_GAMEOVER,
 } GameState;
 
-
-static GameState game_state = GAME_STATE_MENU; // Inicia o jogo como tela do Mangabyte
+static GameState game_state = GAME_STATE_MENU; // Inicia o jogo como tela do menu
 // Definindo o enum indica o que
 // cada celula do mapa pode assumir
 typedef enum mapTileType
@@ -119,7 +115,6 @@ typedef struct fruitTile
   mapTileType type;
   char sprite;
 } fruitTile;
-
 
 // Definindo o union que indica o que
 // uma certa celula do mapa tem
@@ -367,7 +362,7 @@ void load_textures(SDL_Renderer* renderer) {
   background_texture = SDL_CreateTextureFromSurface(renderer, surface);
   SDL_FreeSurface(surface);
 
-  // Carrega a textura do Menu (TROCAR AQUI PARA MODIFICAR A TELA INICIAL)
+  // Carrega a textura do Menu 
   surface = IMG_Load("assets/menu.png");
   if (!surface) {
       fprintf(stderr, "Erro ao carregar menu.png: %s\n", IMG_GetError());
@@ -427,8 +422,8 @@ TTF_Quit();
 
   IMG_Quit();
 }
-// Definição de uma função que dá as específicações
-// de desenho de um retângulo
+
+// Definição de uma função que dá as específicações de desenho de um retângulo
 SDL_Rect rectFromCellPos(int cell_posX, int cell_posY) {
   return (SDL_Rect){
       cell_posX * cell_size,
@@ -505,14 +500,6 @@ if (!game_font) {
   load_high_score();
 }
 
-// process_input com suporte a teclado (SDL) e controle por câmera (OpenCV)
-// Assume que exista uma função/variável para ajustar a direção da cobra.
-// Esta implementação tenta detectar símbolos comuns e chama a lógica apropriada.
-//
-// Se o seu projeto usa nomes diferentes para a variável de direção, ajuste as linhas
-// marcadas com "ADAPTAR_AQUI" para corresponder ao seu código.
-// process_input com suporte a teclado (SDL) e controle por câmera (OpenCV) - VERSÃO CORRIGIDA
-// Adicione estas variáveis globais no topo do arquivo, junto com as outras
 SDL_Window* camera_window = NULL;
 SDL_Renderer* camera_renderer = NULL;
 SDL_Texture* camera_texture = NULL;
@@ -721,7 +708,6 @@ void render_camera_frame(const cv::Mat& frame, const cv::Mat& mask) {
     SDL_RenderPresent(camera_renderer);
 }
 
-// Função process_input modificada com suporte à janela da câmera
 // Função process_input modificada com detecção facial
 void process_input()
 {
@@ -1128,12 +1114,6 @@ void render(SDL_Renderer* renderer) {
   };
   SDL_RenderCopy(renderer, gameover_texture, NULL, &screen_rect);}
   else if (game_state==GAME_STATE_PLAYING){
-  // ======= LAYERS (Camadas de renderização) =======
-
-  /* Layers não são literalmente programadas, mas por consequência da dinâmica,
-   uma render a frente se sobrepõe a uma anterior, portanto a separação em camadas
-   é puramente para organização!
-  */
 
   // ===== Layer 0 =====
 
@@ -1286,7 +1266,6 @@ for(int i = 0; i < snake_size; i++) {
   SDL_RenderSetViewport(renderer, NULL);
   SDL_RenderPresent(renderer);
 }
-
 
 //Funções para pontuação
 
