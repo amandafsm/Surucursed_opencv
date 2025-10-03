@@ -62,6 +62,7 @@ macOS (Homebrew)\
 bash\
 brew install sdl2 \
 sdl2-image \
+sdl2-ttf\
 opencv
 
 ---
