@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     // Loop principal do jogo
     while (game_is_running)
     {
-        process_input();   // Lê teclado e câmera (OpenCV)
+        process_input();   // Processa a entrada no jogo (teclado, mouse, etc)
         update(renderer);  // Atualiza lógica do jogo (movimento, colisão, etc)
         render(renderer);  // Desenha tudo na tela
     }
