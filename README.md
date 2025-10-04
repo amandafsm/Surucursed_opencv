@@ -5,7 +5,7 @@ Uma extensão do projeto Surucursed original que adiciona controle por detecçã
 --- 
 
 ## Diagrama UML
-![Diagrama UML](DiagramaUML.png)
+![Diagrama UML](img/DiagramaUML.png)
 
 ---
 
